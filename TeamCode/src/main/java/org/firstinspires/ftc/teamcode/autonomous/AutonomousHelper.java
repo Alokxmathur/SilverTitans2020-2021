@@ -45,12 +45,6 @@ public abstract class AutonomousHelper extends OpMode {
     protected boolean navigated, navigationQueued;
 
     int numberOfRingsOnStack;
-    DesiredArea areaToGoTo;
-
-    public enum DesiredArea {
-        A, B, C
-    }
-
 
     /*
      * Code to run ONCE when the driver hits INIT
@@ -74,7 +68,7 @@ public abstract class AutonomousHelper extends OpMode {
         if (robot.fullyInitialized()) {
             //keep looking for the sky stone position in the quarry
             match.setNumberOfRings(robot.getNumberOfRings());
-            //update driver station with sky stone position
+            //update driver station with number of rings
             telemetry.addData("Alliance", allianceColor);
             telemetry.addData("Rings:", match.getNumberOfRings());
             telemetry.addData("Status", "Ready to autonomous");
@@ -148,31 +142,41 @@ public abstract class AutonomousHelper extends OpMode {
     }
 
     protected void queueWobbleGoalDeposit() {
-        double forwardMovement =0, rightMovement=0;
+        double forwardMovement=0, rightMovement=0;
         if (numberOfRingsOnStack == 0) {
-            forwardMovement  = 3*Field.TILE_WIDTH;
+            forwardMovement  = 2*Field.TILE_WIDTH;
             rightMovement = 1*Field.TILE_WIDTH;
         }
         if (numberOfRingsOnStack == 1) {
-            forwardMovement  = 4*Field.TILE_WIDTH;
+            forwardMovement  = 3*Field.TILE_WIDTH;
             rightMovement = 0;
         }
         if (numberOfRingsOnStack == 4) {
-            forwardMovement  = 5*Field.TILE_WIDTH;
+            forwardMovement  = 4*Field.TILE_WIDTH;
             rightMovement = 1*Field.TILE_WIDTH;
         }
 
         robot.queuePrimaryOperation(
-                new DriveForDistanceOperation(forwardMovement, 0.5, "Move to the right square"));
+                new DriveForDistanceOperation(forwardMovement, CAUTIOUS_SPEED, "Move to the right box"));
         robot.queuePrimaryOperation(
-                new StrafeLeftForDistanceOperation(-rightMovement, .5, "strafe into the right box")
+                new StrafeLeftForDistanceOperation(-rightMovement, CAUTIOUS_SPEED, "Strafe to the box")
         );
 
     }
 
     protected void queueNavigation() {
+        double backwardsMovement=0;
+        if (numberOfRingsOnStack == 0) {
+            backwardsMovement  = -1*Field.TILE_WIDTH;
+        }
+        if (numberOfRingsOnStack == 1) {
+            backwardsMovement  = 0*Field.TILE_WIDTH;
+        }
+        if (numberOfRingsOnStack == 4) {
+            backwardsMovement  = 1*Field.TILE_WIDTH;
+        }
         robot.queuePrimaryOperation(
-                new DriveForDistanceOperation(-1 * Field.TILE_WIDTH, 0.5, "Navigate"));
+                new DriveForDistanceOperation(-backwardsMovement, CAUTIOUS_SPEED, "Navigate"));
     }
 
     /*
