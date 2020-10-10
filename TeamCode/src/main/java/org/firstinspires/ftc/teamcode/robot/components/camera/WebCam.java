@@ -23,7 +23,6 @@ import org.firstinspires.ftc.teamcode.game.Field;
 import org.firstinspires.ftc.teamcode.game.Match;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.DEGREES;
@@ -33,14 +32,7 @@ import static org.firstinspires.ftc.robotcore.external.navigation.AxesReference.
 import static org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer.CameraDirection.BACK;
 
 import org.firstinspires.ftc.teamcode.robot.operations.CameraOperation;
-import org.opencv.android.Utils;
-import org.opencv.core.Core;
-import org.opencv.core.Mat;
-import org.opencv.core.MatOfPoint;
-import org.opencv.core.Point;
-import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
-import org.opencv.imgproc.Imgproc;
+
 
 /**
  * Created by silver titans on 9/19/17.
@@ -65,20 +57,10 @@ public class WebCam {
     HardwareMap hardwareMap;
     OpenGLMatrix vuforiaCameraFromRobot;
     OpenGLMatrix lastLocation = new OpenGLMatrix();
-    VuforiaTrackables targetsSkyStone;
+    VuforiaTrackables targetsUltimateGoal;
     ArrayList<VuforiaTrackable> allTrackables = new ArrayList<>();
 
     private Servo cameraServo;
-
-    // Constant for Stone Target
-    private static final float stoneZ = (float) (2.00f * Field.MM_PER_INCH);
-
-    // Constants for the center support targets
-    private static final float bridgeZ = 6.42f * Field.MM_PER_INCH;
-    private static final float bridgeY = 23 * Field.MM_PER_INCH;
-    private static final float bridgeX = 5.18f * Field.MM_PER_INCH;
-    private static final float bridgeRotY = 59;                                 // Units are degrees
-    private static final float bridgeRotZ = 180;
 
     // Constants for perimeter targets
     private static final float halfField = 72f * Field.MM_PER_INCH;
@@ -95,19 +77,14 @@ public class WebCam {
     WebcamName webcamName = null;
     DcMotor ledControl;
 
-    private SkyStoneDetector skyStoneDetector;
+    private RingDetector ringDetector;
 
     public void init(HardwareMap hardwareMap, Telemetry telemetry, Alliance.Color allianceColor) {
         webcamName = hardwareMap.get(WebcamName.class, "Webcam 1");
         ledControl = hardwareMap.get(DcMotor.class, "LED");
         cameraServo = hardwareMap.get(Servo.class, "cameraServo");
         cameraServo.setPosition(0.51);
-        this.skyStoneDetector = new SkyStoneDetector(allianceColor);
-        /*
-         * Configure Vuforia by creating a Parameter object, and passing it to the Vuforia engine.
-         * We can pass Vuforia the handle to a camera preview resource (on the RC phone);
-         * If no camera monitor is desired, use the parameter-less constructor instead (commented out below).
-         */
+        this.ringDetector = new RingDetector();
         final int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId",
                 "id", hardwareMap.appContext.getPackageName());
         this.telemetry = telemetry;
@@ -115,9 +92,13 @@ public class WebCam {
         Thread vuforiaInitializationThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                synchronized (skyStoneDetector) {
+                synchronized (ringDetector) {
 
-                    //VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters(cameraMonitorViewId);
+                    /*
+                     * Configure Vuforia by creating a Parameter object, and passing it to the Vuforia engine.
+                     * We can pass Vuforia the handle to a camera preview resource (on the RC phone);
+                     * If no camera monitor is desired, use the parameter-less constructor instead (commented out below).
+                     */
                     VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters();
 
                     parameters.vuforiaLicenseKey = Match.VUFORIA_KEY;
@@ -135,38 +116,21 @@ public class WebCam {
 
                     // Load the data sets for the trackable objects. These particular data
                     // sets are stored in the 'assets' part of our application.
-                    targetsSkyStone = vuforia.loadTrackablesFromAsset("Skystone");
+                    targetsUltimateGoal = vuforia.loadTrackablesFromAsset("UltimateGoal");
+                    VuforiaTrackable blueTowerGoalTarget = targetsUltimateGoal.get(0);
+                    blueTowerGoalTarget.setName("Blue Tower Goal Target");
+                    VuforiaTrackable redTowerGoalTarget = targetsUltimateGoal.get(1);
+                    redTowerGoalTarget.setName("Red Tower Goal Target");
+                    VuforiaTrackable redAllianceTarget = targetsUltimateGoal.get(2);
+                    redAllianceTarget.setName("Red Alliance Target");
+                    VuforiaTrackable blueAllianceTarget = targetsUltimateGoal.get(3);
+                    blueAllianceTarget.setName("Blue Alliance Target");
+                    VuforiaTrackable frontWallTarget = targetsUltimateGoal.get(4);
+                    frontWallTarget.setName("Front Wall Target");
 
-                    VuforiaTrackable stoneTarget = targetsSkyStone.get(0);
-                    stoneTarget.setName("Stone Target");
+                    // For convenience, gather together all the trackable objects in one easily-iterable collection */
+                    allTrackables.addAll(targetsUltimateGoal);
 
-                    VuforiaTrackable blueRearBridge = targetsSkyStone.get(1);
-                    blueRearBridge.setName("BlueV2 Rear Bridge");
-                    VuforiaTrackable redRearBridge = targetsSkyStone.get(2);
-                    redRearBridge.setName("RedV2 Rear Bridge");
-                    VuforiaTrackable redFrontBridge = targetsSkyStone.get(3);
-                    redFrontBridge.setName("RedV2 Front Bridge");
-                    VuforiaTrackable blueFrontBridge = targetsSkyStone.get(4);
-                    blueFrontBridge.setName("BlueV2 Front Bridge");
-                    VuforiaTrackable red1 = targetsSkyStone.get(5);
-                    red1.setName("RedV2 Perimeter 1");
-                    VuforiaTrackable red2 = targetsSkyStone.get(6);
-                    red2.setName("RedV2 Perimeter 2");
-                    VuforiaTrackable front1 = targetsSkyStone.get(7);
-                    front1.setName("Front Perimeter 1");
-                    VuforiaTrackable front2 = targetsSkyStone.get(8);
-                    front2.setName("Front Perimeter 2");
-                    VuforiaTrackable blue1 = targetsSkyStone.get(9);
-                    blue1.setName("BlueV2 Perimeter 1");
-                    VuforiaTrackable blue2 = targetsSkyStone.get(10);
-                    blue2.setName("BlueV2 Perimeter 2");
-                    VuforiaTrackable rear1 = targetsSkyStone.get(11);
-                    rear1.setName("Rear Perimeter 1");
-                    VuforiaTrackable rear2 = targetsSkyStone.get(12);
-                    rear2.setName("Rear Perimeter 2");
-
-
-                    allTrackables.addAll(targetsSkyStone);
 
                     /**
                      * In order for localization to work, we need to tell the system where each target is on the field, and
@@ -176,71 +140,33 @@ public class WebCam {
                      * for detailed information. Commonly, you'll encounter transformation matrices as instances
                      * of the {@link OpenGLMatrix} class.
                      *
-                     * If you are standing in the RedV2 Alliance Station looking towards the center of the field,
+                     * If you are standing in the Red Alliance Station looking towards the center of the field,
                      *     - The X axis runs from your left to the right. (positive from the center to the right)
-                     *     - The Y axis runs from the RedV2 Alliance Station towards the other side of the field
-                     *       where the BlueV2 Alliance Station is. (Positive is from the center, towards the BlueAlliance station)
+                     *     - The Y axis runs from the Red Alliance Station towards the other side of the field
+                     *       where the Blue Alliance Station is. (Positive is from the center, towards the BlueAlliance station)
                      *     - The Z axis runs from the floor, upwards towards the ceiling.  (Positive is above the floor)
                      *
                      * Before being transformed, each target image is conceptually located at the origin of the field's
                      *  coordinate system (the center of the field), facing up.
                      */
 
-                    // Set the position of the Stone Target.  Since it's not fixed in position, assume it's at the field origin.
-                    // Rotated it to to face forward, and raised it to sit on the ground correctly.
-                    // This can be used for generic target-centric approach algorithms
-                    stoneTarget.setLocation(OpenGLMatrix
-                            .translation(0, 0, stoneZ)
-                            .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 90, 0, -90)));
-
-
-                    //Set the position of the bridge support targets with relation to origin (center of field)
-                    blueFrontBridge.setLocation(OpenGLMatrix
-                            .translation(-bridgeX, bridgeY, bridgeZ)
-                            .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 0, bridgeRotY, bridgeRotZ)));
-
-                    blueRearBridge.setLocation(OpenGLMatrix
-                            .translation(-bridgeX, bridgeY, bridgeZ)
-                            .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 0, -bridgeRotY, bridgeRotZ)));
-
-                    redFrontBridge.setLocation(OpenGLMatrix
-                            .translation(-bridgeX, -bridgeY, bridgeZ)
-                            .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 0, -bridgeRotY, 0)));
-
-                    redRearBridge.setLocation(OpenGLMatrix
-                            .translation(bridgeX, -bridgeY, bridgeZ)
-                            .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 0, bridgeRotY, 0)));
-
                     //Set the position of the perimeter targets with relation to origin (center of field)
-                    red1.setLocation(OpenGLMatrix
-                            .translation(quadField, -halfField, mmTargetHeight)
+                    redAllianceTarget.setLocation(OpenGLMatrix
+                            .translation(0, -halfField, mmTargetHeight)
                             .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 90, 0, 180)));
 
-                    red2.setLocation(OpenGLMatrix
-                            .translation(-quadField, -halfField, mmTargetHeight)
-                            .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 90, 0, 180)));
-
-                    front1.setLocation(OpenGLMatrix
-                            .translation(-halfField, -quadField, mmTargetHeight)
-                            .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 90, 0, 90)));
-
-                    front2.setLocation(OpenGLMatrix
-                            .translation(-halfField, quadField, mmTargetHeight)
-                            .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 90, 0, 90)));
-
-                    blue1.setLocation(OpenGLMatrix
-                            .translation(-quadField, halfField, mmTargetHeight)
+                    blueAllianceTarget.setLocation(OpenGLMatrix
+                            .translation(0, halfField, mmTargetHeight)
                             .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 90, 0, 0)));
+                    frontWallTarget.setLocation(OpenGLMatrix
+                            .translation(-halfField, 0, mmTargetHeight)
+                            .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 90, 0 , 90)));
 
-                    blue2.setLocation(OpenGLMatrix
-                            .translation(quadField, halfField, mmTargetHeight)
-                            .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 90, 0, 0)));
-
-                    rear1.setLocation(OpenGLMatrix
+                    // The tower goal targets are located a quarter field length from the ends of the back perimeter wall.
+                    blueTowerGoalTarget.setLocation(OpenGLMatrix
                             .translation(halfField, quadField, mmTargetHeight)
-                            .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 90, 0, -90)));
-
-                    rear2.setLocation(OpenGLMatrix
+                            .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 90, 0 , -90)));
+                    redTowerGoalTarget.setLocation(OpenGLMatrix
                             .translation(halfField, -quadField, mmTargetHeight)
                             .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 90, 0, -90)));
 
@@ -249,8 +175,11 @@ public class WebCam {
                             .translation(CAMERA_FORWARD_DISPLACEMENT, CAMERA_LEFT_DISPLACEMENT, CAMERA_VERTICAL_DISPLACEMENT)
                             .multiplied(Orientation.getRotationMatrix(EXTRINSIC, ZYX, DEGREES, -90, 90, 0)).inverted();
 
-
-                    targetsSkyStone.activate();
+                    /**  Let all the trackable listeners know where the phone is.  */
+                    for (VuforiaTrackable trackable : allTrackables) {
+                        ((VuforiaTrackableDefaultListener) trackable.getListener()).setPhoneInformation(vuforiaCameraFromRobot, parameters.cameraDirection);
+                    }
+                    targetsUltimateGoal.activate();
                     isInitialized = true;
                 }
             }
@@ -266,7 +195,6 @@ public class WebCam {
     public String findTarget() {
         OpenGLMatrix vuforiaCameraFromTarget = null;
         VuforiaTrackable visibleTarget = null;
-        String foundTarget = null;
         // check all the trackable targets to see which one (if any) is visible.
         for (VuforiaTrackable trackable: allTrackables){
             vuforiaCameraFromTarget = ((VuforiaTrackableDefaultListener)trackable.getListener()).getVuforiaCameraFromTarget();
@@ -367,8 +295,8 @@ public class WebCam {
      *
      * @return The position of the sky stone in the quarry
      */
-    public Field.SkyStonePosition findSkyStoneLocation() {
-        synchronized (skyStoneDetector) {
+    public int getNumberOfRings() {
+        synchronized (ringDetector) {
             /*To access the image: we need to iterate through the images of the frame object:*/
             VuforiaLocalizer.CloseableFrame vuforiaFrame; //takes the frame at the head of the queue
             try {
@@ -387,32 +315,22 @@ public class WebCam {
                 }//for
                 if (image == null) {
                     Match.log("Unable to get image from vuForia camera out of " + numImages);
-                    return Field.SkyStonePosition.TOP;
+                    return 0;
                 }
 
                 Bitmap bitmap = Bitmap.createBitmap(image.getWidth(), image.getHeight(), Bitmap.Config.RGB_565);
                 //Match.log(image.getWidth() + ": " + image.getHeight());
                 bitmap.copyPixelsFromBuffer(image.getPixels());
-                return skyStoneDetector.getSkyStonePosition(bitmap);
+                return ringDetector.getNumberOfRings(bitmap);
             } catch (Exception e) {
-                Match.log("Exception " + e + " in finding sky stone");
+                Match.log("Exception " + e + " in finding number of rings");
             }
-            //default to top
-            return Field.SkyStonePosition.TOP;
+            //default to 0
+            return 0;
         }
     }
 
     public boolean isInitialized() {
             return isInitialized;
-    }
-
-    public String getLeftStoneValue() {
-        return "" + skyStoneDetector.getValLeft();
-    }
-    public String getRightStoneValue() {
-        return "" + skyStoneDetector.getValRight();
-    }
-    public String getMidStoneValue() {
-        return "" + skyStoneDetector.getValMid();
     }
 }

@@ -66,6 +66,27 @@ public abstract class AutonomousHelper extends OpMode {
 
         AutoTransitioner.transitionOnStop(this, "Phoebe: Driver Controlled");
     }
+    /*
+     * Code to run REPEATEDLY after the driver hits INIT, but before they hit PLAY
+     */
+    @Override
+    public void init_loop() {
+        if (robot.fullyInitialized()) {
+            //keep looking for the sky stone position in the quarry
+            match.setNumberOfRings(robot.getNumberOfRings());
+            //update driver station with sky stone position
+            telemetry.addData("Alliance", allianceColor);
+            telemetry.addData("Rings:", match.getNumberOfRings());
+            telemetry.addData("Status", "Ready to autonomous");
+            telemetry.addData("Motors", robot.getMotorStatus());
+            telemetry.addData("Picker", robot.getPickerArmStatus());
+            telemetry.update();
+        }
+        else {
+            telemetry.addData("status", "Waiting for vuForia to finish, please wait");
+            telemetry.update();
+        }
+    }
 
     public void loop() {
         if (!initialMovementDone) {
@@ -152,6 +173,40 @@ public abstract class AutonomousHelper extends OpMode {
     protected void queueNavigation() {
         robot.queuePrimaryOperation(
                 new DriveForDistanceOperation(-1 * Field.TILE_WIDTH, 0.5, "Navigate"));
+    }
+
+    /*
+     * Code to run ONCE when the driver hits PLAY
+     */
+    @Override
+    public void start() {
+        match.setStart();
+    }
+
+    /*
+     * Code to run ONCE after the driver hits STOP
+     */
+    @Override
+    public void stop() {
+        this.robot.stop();
+    }
+
+    public Alliance.Color getAlliance() {
+        return allianceColor;
+    }
+
+
+    protected void flash() {
+        //turn off flash
+        robot.queueSecondaryOperation(new CameraOperation(CameraOperation.CameraOperationType.FLASH_OFF, "Turn off flash"));
+        //wait
+        robot.queueSecondaryOperation(new WaitOperation(1000, "Flash"));
+        //turn on flash
+        robot.queueSecondaryOperation(new CameraOperation(CameraOperation.CameraOperationType.FLASH_ON, "Turn on flash"));
+        //wait
+        robot.queueSecondaryOperation(new WaitOperation(1000, "Flash"));
+        //turn off flash
+        robot.queueSecondaryOperation(new CameraOperation(CameraOperation.CameraOperationType.FLASH_OFF, "Turn off flash"));
     }
 
 }

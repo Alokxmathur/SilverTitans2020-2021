@@ -22,19 +22,15 @@ public class Match {
     private Field field = null;
     private Date startTime = new Date();
     private Date teleopStartTime = new Date();
-    private Field.SkyStonePosition skyStonePosition;
+    private int numberOfRings;
     private Alliance.Color allianceColor;
 
-    public Field.SkyStonePosition getSkyStonePosition() {
-        return skyStonePosition;
+    public int getNumberOfRings() {
+        return numberOfRings;
     }
 
-    public int getSkyStoneNumber() {
-        return skyStonePosition == Field.SkyStonePosition.BOTTOM ? 0 : skyStonePosition == Field.SkyStonePosition.MIDDLE ? 1 : 2;
-    }
-
-    public void setSkyStonePosition(Field.SkyStonePosition skyStonePosition) {
-        this.skyStonePosition = skyStonePosition;
+    public void setNumberOfRings(int numberOfRings) {
+        this.numberOfRings = numberOfRings;
     }
 
     synchronized public static Match getNewInstance() {

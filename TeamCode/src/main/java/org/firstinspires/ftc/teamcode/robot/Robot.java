@@ -593,25 +593,8 @@ public class Robot {
         this.foundationGripper.lowerGripper();
     }
 
-    public Field.SkyStonePosition getSkyStoneLocation() {
-        return this.camera.findSkyStoneLocation();
-    }
-
-    public void autoPlace(PickerOperation.PickerOperationType level) {
-        this.queueSecondaryOperation(new FoundationGripperOperation(FoundationGripperOperation.OperationType.LOWER, "Down foundation gripper"));
-        Match.log("Auto-placing stone at level: " + level + ", current theta=" + getCurrentTheta() + " with " + findTarget());
-        //strafe based on (relative to Skystone), the y position of robot
-        //we subtract the distance the gripper center is offset to the left from the center of the robot
-        double strafeLeftToCenterOnStoneDistance = -this.getCurrentY() - Robot.GRIPPER_LEFT_DISPLACEMENT;
-        double desiredBearing = this.getBearing() - this.getCurrentTheta();
-        this.queuePrimaryOperation(new GyroscopicBearingOperation(desiredBearing, "Align bearing"));
-        this.queuePrimaryOperation(new StrafeLeftForDistanceWithHeadingOperation(strafeLeftToCenterOnStoneDistance, desiredBearing, 1, "Align strafe"));
-        this.queuePrimaryOperation(new DriveForDistanceInDirectionOperation(-this.getCurrentX() - FOUNDATION_GRIPPER_FORWARD_DISPLACEMENT, desiredBearing, 0.5, "Reach foundation"));
-        //get gripper to hover over the skystone
-        this.queuePrimaryOperation(new PickerOperation(level, "" + level));
-        this.queuePrimaryOperation(new PickerOperation(PickerOperation.PickerOperationType.OPEN_GRIPPER, "Drop"));
-        this.queuePrimaryOperation(new PickerOperation(PickerOperation.PickerOperationType.UP, "Raise"));
-
+    public int getNumberOfRings() {
+        return this.camera.getNumberOfRings();
     }
 
 }
